@@ -2,6 +2,9 @@
 .xmake/
 build/
 
+# Git worktrees
+.worktrees/
+
 # Binaries
 bin/
 lib/
