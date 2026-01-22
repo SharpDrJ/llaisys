@@ -2,6 +2,7 @@ add_rules("mode.debug", "mode.release")
 set_encodings("utf-8")
 
 add_includedirs("include")
+add_includedirs("src")
 
 -- CPU --
 includes("xmake/cpu.lua")
@@ -89,8 +90,25 @@ target("llaisys-ops")
     if not is_plat("windows") then
         add_cxflags("-fPIC", "-Wno-unknown-pragmas")
     end
-    
+
     add_files("src/ops/*/*.cpp")
+    add_files("src/ops/concat/*.cpp")  -- Explicitly add concat operator
+
+    on_install(function (target) end)
+target_end()
+
+target("llaisys-models")
+    set_kind("static")
+    add_deps("llaisys-tensor")
+    add_deps("llaisys-ops")
+
+    set_languages("cxx17")
+    set_warnings("all", "error")
+    if not is_plat("windows") then
+        add_cxflags("-fPIC", "-Wno-unknown-pragmas")
+    end
+
+    add_files("src/models/qwen2/*.cpp")
 
     on_install(function (target) end)
 target_end()
@@ -102,10 +120,12 @@ target("llaisys")
     add_deps("llaisys-core")
     add_deps("llaisys-tensor")
     add_deps("llaisys-ops")
+    add_deps("llaisys-models")
 
     set_languages("cxx17")
     set_warnings("all", "error")
     add_files("src/llaisys/*.cc")
+    add_files("src/llaisys/models/*.cpp")
     set_installdir(".")
 
     

@@ -1,6 +1,6 @@
 from .libllaisys import LIB_LLAISYS
 from .tensor import Tensor
-from ctypes import c_float, c_int
+from ctypes import c_float, c_int, c_int64, POINTER
 
 
 class Ops:
@@ -53,3 +53,12 @@ class Ops:
     @staticmethod
     def swiglu(out: Tensor, gate: Tensor, up: Tensor):
         LIB_LLAISYS.llaisysSwiGLU(out.lib_tensor(), gate.lib_tensor(), up.lib_tensor())
+
+    @staticmethod
+    def concat(out: Tensor, inputs: list[Tensor], dim: int):
+        input_ptrs = (c_void_p * len(inputs))()
+        for i, t in enumerate(inputs):
+            input_ptrs[i] = t.lib_tensor()
+        LIB_LLAISYS.llaisysConcat(
+            out.lib_tensor(), input_ptrs, len(inputs), c_int64(dim)
+        )

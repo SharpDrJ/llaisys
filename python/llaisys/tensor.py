@@ -75,6 +75,67 @@ class Tensor:
     def load(self, data: c_void_p):
         LIB_LLAISYS.tensorLoad(self._tensor, data)
 
+    @staticmethod
+    def from_torch(torch_tensor, dtype: DataType = DataType.BF16, device: DeviceType = DeviceType.CPU):
+        """Create Tensor from PyTorch tensor, handling bfloat16 conversion."""
+        import torch
+        import numpy as np
+
+        # Get shape
+        shape = list(torch_tensor.shape)
+
+        # Handle bfloat16 by converting to float32 for data transfer
+        if torch_tensor.dtype == torch.bfloat16:
+            # Convert to float32 for transfer
+            data_tensor = torch_tensor.float()  # Convert to float32
+            # Create numpy array
+            np_array = data_tensor.numpy().astype(np.float32)
+            # Use float32 for storage since bfloat16 isn't natively supported
+            target_dtype = DataType.F32
+        elif torch_tensor.dtype == torch.float16:
+            np_array = torch_tensor.numpy().astype(np.float16)
+            target_dtype = DataType.F16
+        elif torch_tensor.dtype == torch.float32:
+            np_array = torch_tensor.numpy().astype(np.float32)
+            target_dtype = DataType.F32
+        elif torch_tensor.dtype == torch.int64:
+            np_array = torch_tensor.numpy().astype(np.int64)
+            target_dtype = DataType.I64
+        else:
+            raise ValueError(f"Unsupported torch dtype: {torch_tensor.dtype}")
+
+        # Create LLAISYS tensor
+        llaisys_tensor = Tensor(shape=shape, dtype=target_dtype, device=device)
+
+        # Load data
+        llaisys_tensor.load(np_array.ctypes.data_as(c_void_p))
+
+        return llaisys_tensor
+
+    @staticmethod
+    def from_numpy(np_array, dtype: DataType = None, device: DeviceType = DeviceType.CPU):
+        """Create Tensor from numpy array."""
+        # Infer dtype if not specified
+        if dtype is None:
+            dtype_map = {
+                np.float32: DataType.F32,
+                np.float16: DataType.F16,
+                np.int64: DataType.I64,
+                np.int32: DataType.I32,
+                np.float64: DataType.F64,
+            }
+            dtype = dtype_map.get(np_array.dtype, DataType.F32)
+
+        shape = list(np_array.shape)
+
+        # Create LLAISYS tensor
+        llaisys_tensor = Tensor(shape=shape, dtype=dtype, device=device)
+
+        # Load data
+        llaisys_tensor.load(np_array.ctypes.data_as(c_void_p))
+
+        return llaisys_tensor
+
     def is_contiguous(self) -> bool:
         return bool(LIB_LLAISYS.tensorIsContiguous(self._tensor))
 

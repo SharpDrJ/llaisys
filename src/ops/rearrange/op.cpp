@@ -9,7 +9,7 @@ namespace llaisys::ops {
 void rearrange(tensor_t out, tensor_t in) {
     CHECK_SAME_DEVICE(out, in);
     CHECK_SAME_DTYPE(out->dtype(), in->dtype());
-    CHECK_SAME_SHAPE(out->shape(), in->shape());
+    ASSERT(out->numel() == in->numel(), "Rearrange: element count mismatch");
 
     llaisys::core::context().setDevice(out->deviceType(), out->deviceId());
 

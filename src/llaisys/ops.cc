@@ -11,6 +11,7 @@
 #include "../ops/rope/op.hpp"
 #include "../ops/self_attention/op.hpp"
 #include "../ops/swiglu/op.hpp"
+#include "../ops/concat/op.hpp"
 
 __C {
     void llaisysAdd(llaisysTensor_t c, llaisysTensor_t a, llaisysTensor_t b) {
@@ -39,5 +40,13 @@ __C {
     }
     void llaisysSwiGLU(llaisysTensor_t out, llaisysTensor_t gate, llaisysTensor_t up) {
         llaisys::ops::swiglu(out->tensor, gate->tensor, up->tensor);
+    }
+    llaisysTensor_t llaisysConcat(llaisysTensor_t out, llaisysTensor_t* inputs, size_t ninputs, int64_t dim) {
+        std::vector<llaisys::tensor_t> tensors;
+        for (size_t i = 0; i < ninputs; ++i) {
+            tensors.push_back(inputs[i]->tensor);
+        }
+        auto result = llaisys::ops::concat(tensors, dim);
+        return new LlaisysTensor{result};
     }
 }

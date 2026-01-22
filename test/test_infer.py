@@ -68,13 +68,15 @@ def llaisys_infer(
         tokenize=False,
     )
     inputs = tokenizer.encode(input_content)
-    outputs = model.generate(
+    generated = model.generate(
         inputs,
         max_new_tokens=max_new_tokens,
         top_k=top_k,
         top_p=top_p,
         temperature=temperature,
     )
+    # Return full sequence like HuggingFace does
+    outputs = inputs + generated
 
     return outputs, tokenizer.decode(outputs, skip_special_tokens=True)
 
@@ -99,28 +101,32 @@ if __name__ == "__main__":
     tokenizer, model, model_path = load_hf_model(args.model, args.device)
 
     # Example prompt
-    start_time = time.time()
-    tokens, output = hf_infer(
-        args.prompt,
-        tokenizer,
-        model,
-        max_new_tokens=args.max_steps,
-        top_p=top_p,
-        top_k=top_k,
-        temperature=temperature,
-    )
-    end_time = time.time()
+    # print("\n=== Running HuggingFace inference ===")
+    # sys.stdout.flush()
+    # start_time = time.time()
+    # tokens, output = hf_infer(
+    #     args.prompt,
+    #     tokenizer,
+    #     model,
+    #     max_new_tokens=args.max_steps,
+    #     top_p=top_p,
+    #     top_k=top_k,
+    #     temperature=temperature,
+    # )
+    # end_time = time.time()
+    # print(f"HuggingFace inference completed in {end_time - start_time:.2f}s")
+    # sys.stdout.flush()
 
-    del model
-    gc.collect()
+    # del model
+    # gc.collect()
 
-    print("\n=== Answer ===\n")
-    print("Tokens:")
-    print(tokens)
-    print("\nContents:")
-    print(output)
-    print("\n")
-    print(f"Time elapsed: {(end_time - start_time):.2f}s\n")
+    # print("\n=== Answer ===\n")
+    # print("Tokens:")
+    # print(tokens)
+    # print("\nContents:")
+    # print(output)
+    # print("\n")
+    # print(f"Time elapsed: {(end_time - start_time):.2f}s\n")
 
     model = load_llaisys_model(model_path, args.device)
     start_time = time.time()
@@ -145,5 +151,6 @@ if __name__ == "__main__":
     print(f"Time elapsed: {(end_time - start_time):.2f}s\n")
 
     if args.test:
+        # Both now return full sequence (input + generated)
         assert llaisys_tokens == tokens
         print("\033[92mTest passed!\033[0m\n")

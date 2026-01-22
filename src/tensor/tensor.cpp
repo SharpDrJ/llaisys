@@ -1,6 +1,6 @@
 #include "tensor.hpp"
-
 #include "../utils.hpp"
+#include "../llaisys/llaisys_tensor.hpp"
 
 #include <cstring>
 #include <numeric>
@@ -34,6 +34,12 @@ tensor_t Tensor::create(const std::vector<size_t> &shape,
         auto storage = core::context().runtime().allocateDeviceStorage(total_elems * dtype_size);
         return std::shared_ptr<Tensor>(new Tensor(meta, storage));
     }
+}
+
+tensor_t Tensor::wrap(llaisysTensor_t c_tensor) {
+    // c_tensor is a pointer to LlaisysTensor struct which contains a tensor_t (shared_ptr)
+    // We just need to return a copy of the shared_ptr to increment the reference count
+    return c_tensor->tensor;
 }
 
 std::byte *Tensor::data() {

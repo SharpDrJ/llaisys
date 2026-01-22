@@ -1,6 +1,16 @@
 #pragma once
 #include "../core/llaisys_core.hpp"
 
+// Forward declaration for C API
+#ifdef __cplusplus
+extern "C" {
+#endif
+    struct LlaisysTensor;
+    typedef struct LlaisysTensor *llaisysTensor_t;
+#ifdef __cplusplus
+}
+#endif
+
 #include <vector>
 namespace llaisys {
 class Tensor;
@@ -25,6 +35,10 @@ public:
         llaisysDataType_t dtype,
         llaisysDeviceType_t device_type = LLAISYS_DEVICE_CPU,
         int device = 0);
+
+    // Wrap a C tensor pointer (doesn't take ownership)
+    static tensor_t wrap(llaisysTensor_t c_tensor);
+
     ~Tensor() = default;
     // Info
     std::byte *data();

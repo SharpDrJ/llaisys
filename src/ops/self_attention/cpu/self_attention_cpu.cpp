@@ -25,10 +25,10 @@ void self_attention_(tensor_t attn_val, tensor_t q, tensor_t k, tensor_t v, floa
         for (size_t h = 0; h < nh; ++h) {
             size_t h_kv = h / group_size;
             size_t j_end = (kvlen - qlen) + i;
-            
+
             std::vector<float> scores(j_end + 1);
             float max_score = -std::numeric_limits<float>::infinity();
-            
+
             // Compute scores
             for (size_t j = 0; j <= j_end; ++j) {
                 float sum = 0.0f;
@@ -40,7 +40,7 @@ void self_attention_(tensor_t attn_val, tensor_t q, tensor_t k, tensor_t v, floa
                 scores[j] = sum * scale;
                 if (scores[j] > max_score) max_score = scores[j];
             }
-            
+
             // Stable Softmax
             float sum_exp = 0.0f;
             for (size_t j = 0; j <= j_end; ++j) {
