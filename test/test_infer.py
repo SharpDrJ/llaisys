@@ -98,35 +98,36 @@ if __name__ == "__main__":
     if args.test:
         top_p, top_k, temperature = 1.0, 1, 1.0
 
-    tokenizer, model, model_path = load_hf_model(args.model, args.device)
+    hf_device = 'cpu'
+    tokenizer, model, model_path = load_hf_model(args.model, hf_device)
 
     # Example prompt
-    # print("\n=== Running HuggingFace inference ===")
-    # sys.stdout.flush()
-    # start_time = time.time()
-    # tokens, output = hf_infer(
-    #     args.prompt,
-    #     tokenizer,
-    #     model,
-    #     max_new_tokens=args.max_steps,
-    #     top_p=top_p,
-    #     top_k=top_k,
-    #     temperature=temperature,
-    # )
-    # end_time = time.time()
-    # print(f"HuggingFace inference completed in {end_time - start_time:.2f}s")
-    # sys.stdout.flush()
+    print("\n=== Running HuggingFace inference ===")
+    sys.stdout.flush()
+    start_time = time.time()
+    tokens, output = hf_infer(
+        args.prompt,
+        tokenizer,
+        model,
+        max_new_tokens=args.max_steps,
+        top_p=top_p,
+        top_k=top_k,
+        temperature=temperature,
+    )
+    end_time = time.time()
+    print(f"HuggingFace inference completed in {end_time - start_time:.2f}s")
+    sys.stdout.flush()
 
-    # del model
-    # gc.collect()
+    del model
+    gc.collect()
 
-    # print("\n=== Answer ===\n")
-    # print("Tokens:")
-    # print(tokens)
-    # print("\nContents:")
-    # print(output)
-    # print("\n")
-    # print(f"Time elapsed: {(end_time - start_time):.2f}s\n")
+    print("\n=== Answer ===\n")
+    print("Tokens:")
+    print(tokens)
+    print("\nContents:")
+    print(output)
+    print("\n")
+    print(f"Time elapsed: {(end_time - start_time):.2f}s\n")
 
     model = load_llaisys_model(model_path, args.device)
     start_time = time.time()

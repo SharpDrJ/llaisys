@@ -23,6 +23,11 @@ tensor_t concat(const std::vector<tensor_t>& tensors, int64_t dim) {
         CHECK_SAME_DTYPE(dtype, t->dtype());
     }
 
+    // Check all tensors are contiguous
+    for (const auto& t : tensors) {
+        ASSERT(t->isContiguous(), "Concat: all tensors must be contiguous.");
+    }
+
     // Calculate output shape
     size_t ndim = tensors[0]->ndim();
     std::vector<size_t> out_shape(ndim);

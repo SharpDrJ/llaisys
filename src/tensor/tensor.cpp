@@ -3,6 +3,7 @@
 #include "../llaisys/llaisys_tensor.hpp"
 
 #include <cstring>
+#include <functional>
 #include <numeric>
 #include <sstream>
 
@@ -281,8 +282,53 @@ void Tensor::load(const void *src_) {
 }
 
 tensor_t Tensor::contiguous() const {
-    TO_BE_IMPLEMENTED();
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
+    // If already contiguous, return a view (shared storage)
+    if (this->isContiguous()) {
+        return std::shared_ptr<Tensor>(new Tensor(_meta, _storage, _offset));
+    }
+
+    // Create a new contiguous tensor with the same shape and dtype
+    auto result = Tensor::create(this->shape(), this->dtype(),
+                                 this->deviceType(), this->deviceId());
+
+    // Get the element size based on dtype
+    size_t elem_size = llaisys::utils::dsize(this->dtype());
+
+    // Get strides for both tensors
+    const auto& src_strides = this->strides();
+    const auto& dst_strides = result->strides();
+    const auto& shape = this->shape();
+    size_t ndim = this->ndim();
+
+    // Helper function to copy data recursively
+    std::function<void(size_t, ptrdiff_t, ptrdiff_t)> copy_recursive =
+        [&](size_t dim, ptrdiff_t src_offset, ptrdiff_t dst_offset) {
+            if (dim == ndim - 1) {
+                // Last dimension: copy all elements
+                const std::byte* src_base = this->data();
+                std::byte* dst_base = result->data();
+
+                for (size_t i = 0; i < shape[dim]; ++i) {
+                    ptrdiff_t src_idx = src_offset + i * src_strides[dim];
+                    ptrdiff_t dst_idx = dst_offset + i * dst_strides[dim];
+
+                    // Copy one element
+                    std::memcpy(dst_base + dst_idx * elem_size,
+                               src_base + src_idx * elem_size,
+                               elem_size);
+                }
+            } else {
+                // Recurse into next dimension
+                for (size_t i = 0; i < shape[dim]; ++i) {
+                    copy_recursive(dim + 1,
+                                  src_offset + i * src_strides[dim],
+                                  dst_offset + i * dst_strides[dim]);
+                }
+            }
+        };
+
+    copy_recursive(0, 0, 0);
+    return result;
 }
 
 tensor_t Tensor::reshape(const std::vector<size_t> &shape) const {

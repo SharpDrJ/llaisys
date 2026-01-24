@@ -77,6 +77,7 @@ tensor_t Qwen2Attention::forward(tensor_t hidden_state, size_t position, KVCache
 
     // Apply RoPE to Q and K (requires shape [seq_len, num_heads, head_dim])
     auto q_reshaped = q->view({seq_len, num_heads_q, head_dim});
+    auto q_contiguous = q_reshaped->isContiguous() ? q_reshaped : q_reshaped->contiguous();
     auto q_rope = Tensor::create({seq_len, num_heads_q, head_dim},
                                  q->dtype(), device_, device_id_);
 
@@ -85,55 +86,46 @@ tensor_t Qwen2Attention::forward(tensor_t hidden_state, size_t position, KVCache
     for (size_t i = 0; i < seq_len; ++i) {
         pos_data[i] = static_cast<int64_t>(position + i);
     }
-    ops::rope(q_rope, q_reshaped, pos_ids, rope_theta_);
+    ops::rope(q_rope, q_contiguous, pos_ids, rope_theta_);
 
     auto k_reshaped = k->view({seq_len, num_heads_kv, head_dim});
+    auto k_contiguous = k_reshaped->isContiguous() ? k_reshaped : k_reshaped->contiguous();
     auto k_rope = Tensor::create({seq_len, num_heads_kv, head_dim},
                                  k->dtype(), device_, device_id_);
-    ops::rope(k_rope, k_reshaped, pos_ids, rope_theta_);
+    ops::rope(k_rope, k_contiguous, pos_ids, rope_theta_);
 
-    // Handle KV cache
+    // Handle KV cache - store 3D tensors [seq_len, num_heads, head_dim]
     auto cached_k = cache->getK(layer_idx_);
     auto cached_v = cache->getV(layer_idx_);
 
+    // Ensure V is contiguous and in 3D format
+    auto v_reshaped = v->view({seq_len, num_heads_kv, head_dim});
+    auto v_contiguous = v_reshaped->isContiguous() ? v_reshaped : v_reshaped->contiguous();
+
     tensor_t k_for_attn, v_for_attn;
     if (cached_k == nullptr) {
-        // First call - initialize cache with current K/V
-        // Rearrange from [seq_len, num_heads, head_dim] to [num_heads * seq_len, head_dim]
-        k_for_attn = reshapeAndRearrange(k_rope, num_heads_kv, head_dim);
-        v_for_attn = reshapeAndRearrange(v, num_heads_kv, head_dim);
+        // First call - use current K/V directly (3D format)
+        k_for_attn = k_rope;  // [seq_len, num_heads_kv, head_dim]
+        v_for_attn = v_contiguous;  // [seq_len, num_heads_kv, head_dim]
         cache->set(layer_idx_, k_for_attn, v_for_attn);
     } else {
         // Subsequent calls - concatenate cache with current K/V
-        // cached_k/v have shape [num_heads * cached_seq_len, head_dim] (heads-major)
-        // We need to reshape them back to [cached_seq_len, num_heads, head_dim] for concat
-        size_t cached_seq_len = cached_k->shape()[0] / num_heads_kv;
-        auto k_cached_seq = cached_k->view({cached_seq_len, num_heads_kv, head_dim});
-        auto v_cached_seq = cached_v->view({cached_seq_len, num_heads_kv, head_dim});
-
-        // Concatenate: [cached_seq_len, num_heads, head_dim] + [seq_len, num_heads, head_dim]
-        // along sequence dimension (dim=0)
-        auto k_concat = ops::concat({k_cached_seq, k_rope}, 0);
-        auto v_concat = ops::concat({v_cached_seq, v}, 0);
-
-        // Now rearrange the concatenated tensors back to heads-major layout
-        k_for_attn = reshapeAndRearrange(k_concat, num_heads_kv, head_dim);
-        v_for_attn = reshapeAndRearrange(v_concat, num_heads_kv, head_dim);
-
-        // Update cache with new concatenated tensors
+        k_for_attn = ops::concat({cached_k, k_rope}, 0);
+        v_for_attn = ops::concat({cached_v, v_contiguous}, 0);
+        // Update cache with new concatenated tensors (3D format)
         cache->set(layer_idx_, k_for_attn, v_for_attn);
     }
 
-    // Rearrange Q for self_attention: [seq_len, num_heads, head_dim] -> [num_heads * seq_len, head_dim]
-    auto q_for_attn = reshapeAndRearrange(q_rope, num_heads_q, head_dim);
+    // Q is already in the correct format for self_attention
+    auto q_for_attn = q_rope;  // [seq_len, num_heads_q, head_dim]
 
-    // Self attention (output shape: [num_heads_q * seq_len, head_dim])
+    // Self attention (output shape: [seq_len, num_heads_q, head_dim])
     double scale = 1.0 / std::sqrt(static_cast<double>(head_dim));
-    auto attn_out = Tensor::create({num_heads_q * seq_len, head_dim},
+    auto attn_out = Tensor::create({seq_len, num_heads_q, head_dim},
                                    hidden_state->dtype(), device_, device_id_);
     ops::self_attention(attn_out, q_for_attn, k_for_attn, v_for_attn, scale);
 
-    // Merge heads: reshape from [num_heads * seq_len, head_dim] back to [seq_len, num_heads * head_dim]
+    // Merge heads: reshape from [seq_len, num_heads_q, head_dim] to [seq_len, num_heads_q * head_dim]
     auto attn_merged = attn_out->view({seq_len, num_heads_q * head_dim});
 
     // Output projection
