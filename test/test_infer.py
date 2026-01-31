@@ -98,8 +98,7 @@ if __name__ == "__main__":
     if args.test:
         top_p, top_k, temperature = 1.0, 1, 1.0
 
-    hf_device = 'nvidia'
-    tokenizer, model, model_path = load_hf_model(args.model, hf_device)
+    tokenizer, model, model_path = load_hf_model(args.model, args.device)
 
     # Example prompt
     print("\n=== Running HuggingFace inference ===")
