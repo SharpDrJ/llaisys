@@ -16,7 +16,7 @@ Qwen2Block::Qwen2Block(
       mlp_norm_w_(mlp_norm_w),
       attention_(std::move(attention)),
       mlp_(std::move(mlp)),
-      epsilon_(1e-6),
+      epsilon_(1e-6f),
       device_(attn_norm_w->deviceType()),
       device_id_(attn_norm_w->deviceId()) {
 }
