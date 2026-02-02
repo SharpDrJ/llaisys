@@ -86,13 +86,13 @@ tensor_t Qwen2Attention::forward(tensor_t hidden_state, size_t position, KVCache
     for (size_t i = 0; i < seq_len; ++i) {
         pos_data[i] = static_cast<int64_t>(position + i);
     }
-    ops::rope(q_rope, q_contiguous, pos_ids, rope_theta_);
+    ops::rope(q_rope, q_contiguous, pos_ids, static_cast<float>(rope_theta_));
 
     auto k_reshaped = k->view({seq_len, num_heads_kv, head_dim});
     auto k_contiguous = k_reshaped->isContiguous() ? k_reshaped : k_reshaped->contiguous();
     auto k_rope = Tensor::create({seq_len, num_heads_kv, head_dim},
                                  k->dtype(), device_, device_id_);
-    ops::rope(k_rope, k_contiguous, pos_ids, rope_theta_);
+    ops::rope(k_rope, k_contiguous, pos_ids, static_cast<float>(rope_theta_));
 
     // Handle KV cache - store 3D tensors [seq_len, num_heads, head_dim]
     auto cached_k = cache->getK(layer_idx_);
@@ -123,7 +123,7 @@ tensor_t Qwen2Attention::forward(tensor_t hidden_state, size_t position, KVCache
     double scale = 1.0 / std::sqrt(static_cast<double>(head_dim));
     auto attn_out = Tensor::create({seq_len, num_heads_q, head_dim},
                                    hidden_state->dtype(), device_, device_id_);
-    ops::self_attention(attn_out, q_for_attn, k_for_attn, v_for_attn, scale);
+    ops::self_attention(attn_out, q_for_attn, k_for_attn, v_for_attn, static_cast<float>(scale));
 
     // Merge heads: reshape from [seq_len, num_heads_q, head_dim] to [seq_len, num_heads_q * head_dim]
     auto attn_merged = attn_out->view({seq_len, num_heads_q * head_dim});
