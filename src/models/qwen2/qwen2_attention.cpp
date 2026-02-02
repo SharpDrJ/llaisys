@@ -18,7 +18,7 @@ Qwen2Attention::Qwen2Attention(
     tensor_t v_proj_w, tensor_t v_proj_b,
     tensor_t o_proj_w,
     size_t num_heads, size_t num_kv_heads,
-    double rope_theta,
+    float rope_theta,
     size_t layer_idx)
     : q_proj_w_(q_proj_w), k_proj_w_(k_proj_w), v_proj_w_(v_proj_w), o_proj_w_(o_proj_w),
       q_proj_b_(q_proj_b), k_proj_b_(k_proj_b), v_proj_b_(v_proj_b),
@@ -86,13 +86,13 @@ tensor_t Qwen2Attention::forward(tensor_t hidden_state, size_t position, KVCache
     for (size_t i = 0; i < seq_len; ++i) {
         pos_data[i] = static_cast<int64_t>(position + i);
     }
-    ops::rope(q_rope, q_contiguous, pos_ids, static_cast<float>(rope_theta_));
+    ops::rope(q_rope, q_contiguous, pos_ids, rope_theta_);
 
     auto k_reshaped = k->view({seq_len, num_heads_kv, head_dim});
     auto k_contiguous = k_reshaped->isContiguous() ? k_reshaped : k_reshaped->contiguous();
     auto k_rope = Tensor::create({seq_len, num_heads_kv, head_dim},
                                  k->dtype(), device_, device_id_);
-    ops::rope(k_rope, k_contiguous, pos_ids, static_cast<float>(rope_theta_));
+    ops::rope(k_rope, k_contiguous, pos_ids, rope_theta_);
 
     // Handle KV cache - store 3D tensors [seq_len, num_heads, head_dim]
     auto cached_k = cache->getK(layer_idx_);
@@ -120,10 +120,10 @@ tensor_t Qwen2Attention::forward(tensor_t hidden_state, size_t position, KVCache
     auto q_for_attn = q_rope;  // [seq_len, num_heads_q, head_dim]
 
     // Self attention (output shape: [seq_len, num_heads_q, head_dim])
-    double scale = 1.0 / std::sqrt(static_cast<double>(head_dim));
+    float scale = 1.0f / std::sqrt(static_cast<float>(head_dim));
     auto attn_out = Tensor::create({seq_len, num_heads_q, head_dim},
                                    hidden_state->dtype(), device_, device_id_);
-    ops::self_attention(attn_out, q_for_attn, k_for_attn, v_for_attn, static_cast<float>(scale));
+    ops::self_attention(attn_out, q_for_attn, k_for_attn, v_for_attn, scale);
 
     // Merge heads: reshape from [seq_len, num_heads_q, head_dim] to [seq_len, num_heads_q * head_dim]
     auto attn_merged = attn_out->view({seq_len, num_heads_q * head_dim});

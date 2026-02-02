@@ -31,7 +31,7 @@ private:
     tensor_t mlp_norm_w_;
     std::unique_ptr<Qwen2Attention> attention_;
     std::unique_ptr<Qwen2MLP> mlp_;
-    double epsilon_;
+    float epsilon_;
     llaisysDeviceType_t device_;
     int device_id_;
 };

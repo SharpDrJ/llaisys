@@ -21,8 +21,8 @@ public:
         size_t num_heads;
         size_t num_kv_heads;
         size_t vocab_size;
-        double rope_theta;
-        double epsilon;
+        float rope_theta;
+        float epsilon;
         int64_t eos_token;
     };
 

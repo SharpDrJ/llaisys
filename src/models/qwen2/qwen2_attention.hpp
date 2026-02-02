@@ -18,7 +18,7 @@ public:
         tensor_t v_proj_w, tensor_t v_proj_b,
         tensor_t o_proj_w,
         size_t num_heads, size_t num_kv_heads,
-        double rope_theta,
+        float rope_theta,
         size_t layer_idx);
     ~Qwen2Attention() = default;
 
@@ -33,7 +33,7 @@ private:
     size_t num_heads_;
     size_t num_kv_heads_;
     size_t head_dim_;
-    double rope_theta_;
+    float rope_theta_;
     size_t layer_idx_;  // Layer index for KV cache
     llaisysDeviceType_t device_;
     int device_id_;
