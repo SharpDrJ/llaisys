@@ -6,6 +6,7 @@
 #include "../../ops/add/op.hpp"
 #include "../../utils.hpp"
 #include <cmath>
+#include <string>
 
 namespace llaisys {
 namespace models {
